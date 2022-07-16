@@ -1,0 +1,62 @@
+trigger:
+  - none
+
+pool:
+  vmImage: 'ubuntu-20.04'
+
+variables:
+  working_dir: 'packer_windows_example'
+  arm_connection: '< Insert ServicePrincipal Name >'
+
+stages:
+  - stage: Validate
+    displayName: 'Validate Code'
+    jobs:
+      - job: Validate
+        displayName: 'Packer Validate'
+        steps:
+          - task: AzureCLI@2
+            displayName: 'Packer Validate'
+            inputs:
+              azureSubscription: $(arm_connection)
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                export PKR_VAR_client_id=$servicePrincipalId
+                export PKR_VAR_client_secret=$servicePrincipalKey
+                export PKR_VAR_tenant_id=$tenantId
+                export PKR_VAR_subscription_id=$(az account show --query id --output tsv)
+
+                packer validate -var-file="example.pkrvars.hcl" .
+              addSpnToEnvironment: true
+              workingDirectory:  $(working_dir)
+
+          - publish: $(Build.SourcesDirectory)/
+            artifact: staging
+
+  - stage: Release
+    displayName: 'Build And Release Image'
+    jobs:
+      - deployment: BuildAndReleaseImage
+        displayName: 'Packer Build'
+        environment: WVD-Prod
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureCLI@2
+                  displayName: 'Packer Build'
+                  inputs:
+                    azureSubscription: $(arm_connection)
+                    scriptType: 'bash'
+                    scriptLocation: 'inlineScript'
+                    inlineScript: |
+                      export PKR_VAR_client_id=$servicePrincipalId
+                      export PKR_VAR_client_secret=$servicePrincipalKey
+                      export PKR_VAR_tenant_id=$tenantId
+                      export PKR_VAR_subscription_id=$(az account show --query id --output tsv)
+
+                      packer build -var-file="example.pkrvars.hcl" .
+                    addSpnToEnvironment: true
+                    workingDirectory:  $(Pipeline.Workspace)/staging/$(working_dir)
+
