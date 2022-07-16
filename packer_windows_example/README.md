@@ -1,4 +1,4 @@
-# Project: Packer Azure Windows 2019 Datacenter Image
+# Project: Packer Azure Windows 2022 Datacenter Azure Edition Image
 
 This example project can be used to build a Windows Server 2022 Datacenter Azure Edition image using packer.
 We also install for demo purposes IIS and create a single HTML page with a message.
